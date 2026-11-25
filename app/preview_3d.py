@@ -19,6 +19,7 @@ from OpenGL.GL import (
     glGenBuffers, glBindBuffer, glBufferData, glEnableVertexAttribArray,
     glVertexAttribPointer, glDrawElements, glGenTextures, glBindTexture,
     glTexParameteri, glTexImage2D, glGenerateMipmap, glActiveTexture, glEnable,
+    glPixelStorei,
     glClearColor, glClear, glViewport, glDisableVertexAttribArray, glDeleteBuffers,
     glDeleteTextures, glPolygonMode, GL_FRONT_AND_BACK, GL_FILL,
 )
