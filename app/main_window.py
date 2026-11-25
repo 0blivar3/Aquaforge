@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
         self.seed = 12345
         self.thread: QThread | None = None
         self._loading_presets = False
+        self.active_operation = "generation"
         self._build_ui()
         self._refresh_presets()
 
@@ -284,6 +285,7 @@ class MainWindow(QMainWindow):
         self.convert_button.setEnabled(False)
         self.export_button.setEnabled(False)
         self.progress.setValue(0)
+        self.active_operation = "generation"
         self.status.setText("Generating on CPU…")
         worker = GenerationWorker(
             self._settings(),
@@ -333,6 +335,7 @@ class MainWindow(QMainWindow):
         self.convert_button.setEnabled(False)
         self.export_button.setEnabled(False)
         self.progress.setValue(0)
+        self.active_operation = "conversion"
         self.status.setText("Converting image…")
         worker = ImageConversionWorker(
             self.source_height.copy(), self.image_strength.value(),
@@ -363,8 +366,10 @@ class MainWindow(QMainWindow):
         self._refresh_preview()
         h, w, _ = image.shape
         self.info.setText(f"{w} × {h} px")
-        self.status.setText("Conversion complete" if self.source_height is not None
-                            and self.source_path is not None else "Generation complete")
+        self.status.setText(
+            "Image conversion complete" if self.active_operation == "conversion"
+            else "Generation complete"
+        )
         self.export_button.setEnabled(True)
 
     def _on_failed(self, message: str):
