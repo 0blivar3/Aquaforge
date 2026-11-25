@@ -221,6 +221,7 @@ class MainWindow(QMainWindow):
         animation_layout = QHBoxLayout(animation_controls)
         self.animation_button = QPushButton("Play")
         self.animation_button.setCheckable(True)
+        self.animation_button.setToolTip("Play or pause cyclic texture movement in the preview")
         self.animation_button.setEnabled(False)
         self.animation_button.toggled.connect(self._toggle_animation)
         self.animation_direction = QComboBox()
