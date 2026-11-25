@@ -26,6 +26,8 @@ A desktop tool for procedural water-surface tangent-space Normal Map generation 
 - Isolated R, G and B channel inspection in grayscale.
 - Source, result and side-by-side comparison.
 - Reset View control.
+- Animated texture playback with direction, speed and motion controls.
+- Animation affects only the preview; exported Normal Maps remain static.
 
 ### Export
 - PNG, TGA and TIFF export with overwrite confirmation.
@@ -58,5 +60,4 @@ pytest
 ## Roadmap
 
 - Advanced wave models (including Gerstner-style waves and circular ripple emitters).
-- Animated preview.
 - Real-time 3D preview with PyOpenGL and GLSL.
