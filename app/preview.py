@@ -111,7 +111,8 @@ class TexturePreview(QWidget):
             else:
                 self._draw_image(painter, chosen, QRectF(self.rect()))
                 painter.setPen(QColor("#d5dbe3"))
-                painter.drawText(12, 24, self.comparison.upper())
+                label = "SOURCE" if self.comparison == "Source" and source is not None else "RESULT"
+                painter.drawText(12, 24, label)
         painter.end()
 
     def wheelEvent(self, event):
