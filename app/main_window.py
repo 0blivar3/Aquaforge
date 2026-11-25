@@ -189,12 +189,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(controls_scroll, 0)
 
         preview_panel = QVBoxLayout()
+        self.preview_tabs = QTabWidget()
+
+        two_d_page = QWidget()
+        two_d_layout = QVBoxLayout(two_d_page)
         preview_header = QHBoxLayout()
         preview_header.addWidget(QLabel("2D TEXTURE PREVIEW"))
         preview_header.addStretch(1)
         self.info = QLabel("No texture loaded")
         preview_header.addWidget(self.info)
-        preview_panel.addLayout(preview_header)
+        two_d_layout.addLayout(preview_header)
 
         preview_controls = QHBoxLayout()
         self.preview_mode = QComboBox()
@@ -216,7 +220,7 @@ class MainWindow(QMainWindow):
         preview_controls.addWidget(self.preview_comparison)
         preview_controls.addStretch(1)
         preview_controls.addWidget(self.reset_view_button)
-        preview_panel.addLayout(preview_controls)
+        two_d_layout.addLayout(preview_controls)
 
         animation_controls = QGroupBox("Animated preview")
         animation_layout = QHBoxLayout(animation_controls)
@@ -227,9 +231,7 @@ class MainWindow(QMainWindow):
         self.animation_button.toggled.connect(self._toggle_animation)
         self.animation_direction = QComboBox()
         self.animation_direction.addItems(["Right", "Left", "Down", "Up", "Diagonal"])
-        self.animation_direction.currentTextChanged.connect(
-            self.preview_direction_changed
-        )
+        self.animation_direction.currentTextChanged.connect(self.preview_direction_changed)
         self.animation_speed = self._double(1.0, 0.1, 3.0, 0.1)
         self.animation_speed.valueChanged.connect(self._animation_speed_changed)
         self.animation_intensity = self._double(1.0, 0.0, 2.0, 0.1)
@@ -241,11 +243,11 @@ class MainWindow(QMainWindow):
         animation_layout.addWidget(self.animation_speed)
         animation_layout.addWidget(QLabel("Motion"))
         animation_layout.addWidget(self.animation_intensity)
-        preview_panel.addWidget(animation_controls)
+        two_d_layout.addWidget(animation_controls)
 
-        self.preview_tabs = QTabWidget()
         self.preview = TexturePreview()
-        self.preview_tabs.addTab(self.preview, "2D Preview")
+        two_d_layout.addWidget(self.preview, 1)
+        self.preview_tabs.addTab(two_d_page, "2D Preview")
 
         three_d_page = QWidget()
         three_d_layout = QVBoxLayout(three_d_page)
@@ -272,7 +274,6 @@ class MainWindow(QMainWindow):
         three_d_layout.addWidget(three_d_hint)
         self.preview_tabs.addTab(three_d_page, "3D Material Preview")
         preview_panel.addWidget(self.preview_tabs, 1)
-
         self.progress = QProgressBar()
         self.progress.setValue(0)
         self.status = QLabel("Ready")
