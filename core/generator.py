@@ -21,7 +21,7 @@ class GeneratorSettings:
     seamless: bool = True
 
 
-def generate_heightmap(settings: GeneratorSettings, progress=None) -> np.ndarray:
+def _generate_heightmap_python(settings: GeneratorSettings, progress=None) -> np.ndarray:
     """Generate a periodic multi-directional water height field."""
     s = settings
     if not (16 <= s.width <= 8192 and 16 <= s.height <= 8192):
@@ -78,3 +78,29 @@ def generate_heightmap(settings: GeneratorSettings, progress=None) -> np.ndarray
     if progress:
         progress(100)
     return height.astype(np.float32)
+
+
+
+def generate_heightmap(settings: GeneratorSettings, progress=None) -> np.ndarray:
+    """Generate a height field using the native C++ engine when available."""
+    from core.native_backend import get_native_backend
+
+    backend = get_native_backend()
+    if backend is None:
+        return _generate_heightmap_python(settings, progress)
+
+    s = settings
+    if not (16 <= s.width <= 8192 and 16 <= s.height <= 8192):
+        raise ValueError("Resolution must be between 16 and 8192 pixels")
+    if s.detail < 1 or s.detail > 12:
+        raise ValueError("Detail must be between 1 and 12")
+    if progress:
+        progress(5)
+    result = backend.generate_heightmap(
+        s.width, s.height, s.wave_scale, s.wave_strength, s.frequency,
+        s.direction, s.wind_strength, s.ripple_intensity, s.ripple_scale,
+        s.detail, s.distortion, s.seed
+    )
+    if progress:
+        progress(100)
+    return np.asarray(result, dtype=np.float32)
