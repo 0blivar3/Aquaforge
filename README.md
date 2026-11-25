@@ -20,6 +20,13 @@ A desktop tool for procedural water-surface tangent-space Normal Map generation 
 - Preview the source image and the generated Normal Map.
 - Convert images in a background worker thread.
 
+### Advanced 2D preview
+- Single texture preview and 3x3 tiling mode for checking repeat seams.
+- Mouse-wheel zoom and click-and-drag panning.
+- Isolated R, G and B channel inspection in grayscale.
+- Source, result and side-by-side comparison.
+- Reset View control.
+
 ### Export
 - PNG, TGA and TIFF export with overwrite confirmation.
 
@@ -51,6 +58,5 @@ pytest
 ## Roadmap
 
 - Advanced wave models (including Gerstner-style waves and circular ripple emitters).
-- 2D tiling/zoom comparison tools and channel inspection.
 - Animated preview.
 - Real-time 3D preview with PyOpenGL and GLSL.
