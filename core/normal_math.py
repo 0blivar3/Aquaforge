@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 
-def height_to_normal(
+def _height_to_normal_python(
     height: np.ndarray,
     strength: float = 4.0,
     y_convention: str = "OpenGL",
@@ -65,3 +65,35 @@ def height_to_normal(
             progress(int(end / height_px * 100))
 
     return result
+
+
+
+def height_to_normal(
+    height: np.ndarray,
+    strength: float = 4.0,
+    y_convention: str = "OpenGL",
+    seamless: bool = True,
+    progress=None,
+) -> np.ndarray:
+    """Convert a height field using the native engine, falling back to NumPy."""
+    from core.native_backend import get_native_backend
+
+    if y_convention not in {"OpenGL", "DirectX"}:
+        raise ValueError("y_convention must be 'OpenGL' or 'DirectX'")
+    if strength < 0:
+        raise ValueError("strength cannot be negative")
+    array = np.asarray(height, dtype=np.float32)
+    if array.ndim != 2 or min(array.shape) < 2:
+        raise ValueError("height must be a 2D array at least 2x2")
+
+    backend = get_native_backend()
+    if backend is None:
+        return _height_to_normal_python(
+            array, strength, y_convention, seamless, progress
+        )
+    if progress:
+        progress(5)
+    result = backend.height_to_normal(array, strength, y_convention, seamless)
+    if progress:
+        progress(100)
+    return np.asarray(result, dtype=np.uint8)
