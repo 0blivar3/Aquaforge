@@ -39,9 +39,28 @@ A desktop tool for procedural water-surface tangent-space Normal Map generation 
 ### Export
 - PNG, TGA and TIFF export with overwrite confirmation.
 
+## Architecture
+
+- Python + PySide6 owns the application UI, task orchestration, presets and file workflows.
+- The optional C++17 compute engine is exposed through pybind11 and accelerates procedural height-field generation and height-to-normal conversion.
+- NumPy implementations remain available as a compatible fallback when the native extension has not been built.
+- OpenGL/GLSL remains responsible for interactive 3D material rendering; this is currently a renderer, not yet a compute-shader backend.
+
+### Build the native engine
+
+Install the project in editable mode to compile the C++ extension with the local C++ toolchain:
+
+```bash
+python -m pip install -e .
+```
+
+On Windows, install Visual Studio Build Tools with the C++ desktop workload. On macOS, install Xcode Command Line Tools. On Linux, install a C++17 compiler such as GCC or Clang.
+
+If the extension is not built, run `python main.py` as usual; AquaForge automatically uses its NumPy fallback.
+
 ## Requirements
 
-Python 3.12+ is recommended. Install dependencies:
+Python 3.10+ is supported. Install dependencies:
 
 ```bash
 python -m venv .venv
