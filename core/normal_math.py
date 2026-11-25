@@ -8,8 +8,14 @@ def height_to_normal(
     strength: float = 4.0,
     y_convention: str = "OpenGL",
     seamless: bool = True,
+    progress=None,
 ) -> np.ndarray:
-    """Convert a 2D height field to an 8-bit tangent-space RGB normal map."""
+    """Convert a 2D height field to an 8-bit tangent-space RGB normal map.
+
+    Rows are processed in chunks to keep peak memory use manageable for
+    large textures (2K/4K), rather than allocating several full-size float
+    and three-channel intermediate arrays.
+    """
     if height.ndim != 2 or min(height.shape) < 2:
         raise ValueError("height must be a 2D array at least 2x2")
     if strength < 0:
@@ -18,18 +24,44 @@ def height_to_normal(
         raise ValueError("y_convention must be 'OpenGL' or 'DirectX'")
 
     h = np.asarray(height, dtype=np.float32)
-    if seamless:
-        dx = (np.roll(h, -1, axis=1) - np.roll(h, 1, axis=1)) * 0.5
-        dy = (np.roll(h, -1, axis=0) - np.roll(h, 1, axis=0)) * 0.5
-    else:
-        dy, dx = np.gradient(h)
+    height_px, width_px = h.shape
+    result = np.empty((height_px, width_px, 3), dtype=np.uint8)
+    chunk_rows = max(16, min(256, 1_048_576 // max(1, width_px)))
 
-    nx = -dx * strength
-    ny = -dy * strength
-    if y_convention == "DirectX":
-        ny = -ny
-    nz = np.ones_like(h)
-    length = np.sqrt(nx * nx + ny * ny + nz * nz)
-    normals = np.stack((nx / length, ny / length, nz / length), axis=-1)
-    rgb = np.clip((normals * 0.5 + 0.5) * 255.0, 0, 255)
-    return np.rint(rgb).astype(np.uint8)
+    if not seamless:
+        # np.gradient preserves the original one-sided edge behavior.
+        grad_y, grad_x = np.gradient(h)
+    else:
+        grad_y = grad_x = None
+
+    for start in range(0, height_px, chunk_rows):
+        end = min(height_px, start + chunk_rows)
+        if seamless:
+            rows = np.arange(start, end)
+            above = h[(rows - 1) % height_px]
+            below = h[(rows + 1) % height_px]
+            current = h[start:end]
+            dx = (np.roll(current, -1, axis=1) - np.roll(current, 1, axis=1)) * 0.5
+            dy = (below - above) * 0.5
+        else:
+            dx = grad_x[start:end]
+            dy = grad_y[start:end]
+
+        nx = -dx * strength
+        ny = -dy * strength
+        if y_convention == "DirectX":
+            ny *= -1.0
+        length = np.sqrt(nx * nx + ny * ny + 1.0)
+        nx /= length
+        ny /= length
+        nz = 1.0 / length
+
+        chunk = result[start:end]
+        chunk[..., 0] = np.rint(np.clip((nx * 0.5 + 0.5) * 255.0, 0, 255)).astype(np.uint8)
+        chunk[..., 1] = np.rint(np.clip((ny * 0.5 + 0.5) * 255.0, 0, 255)).astype(np.uint8)
+        chunk[..., 2] = np.rint(np.clip((nz * 0.5 + 0.5) * 255.0, 0, 255)).astype(np.uint8)
+
+        if progress:
+            progress(int(end / height_px * 100))
+
+    return result
