@@ -33,11 +33,13 @@ class GenerationWorker(QObject):
 
     def run(self):
         try:
-            height = generate_heightmap(self.settings, self.progress.emit)
+            height = generate_heightmap(
+                self.settings, lambda value: self.progress.emit(int(value * 0.7))
+            )
             result = height_to_normal(
                 height, strength=5.0, y_convention=self.convention,
                 seamless=self.settings.seamless,
-                progress=lambda value: self.progress.emit(75 + int(value * 0.25))
+                progress=lambda value: self.progress.emit(70 + int(value * 0.3))
             )
             self.finished.emit(result)
         except Exception as exc:
@@ -436,7 +438,7 @@ class MainWindow(QMainWindow):
         self.progress.setValue(value)
         if self.active_operation == "generation":
             self.status.setText(
-                f"Generating height field · {backend_name()}…" if value < 75
+                f"Generating height field · {backend_name()}…" if value < 70
                 else f"Converting height field to Normal Map · {backend_name()}…"
             )
 
