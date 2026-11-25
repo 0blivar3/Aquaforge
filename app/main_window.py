@@ -5,11 +5,12 @@ import secrets
 import numpy as np
 from PySide6.QtCore import QObject, QThread, Signal
 from app.preview import TexturePreview
+from app.preview_3d import NormalMap3DPreview
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QComboBox, QSpinBox,
     QDoubleSpinBox, QProgressBar, QFileDialog, QMessageBox,
     QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QScrollArea,
-    QInputDialog
+    QInputDialog, QTabWidget
 )
 
 from core.generator import GeneratorSettings, generate_heightmap
@@ -242,8 +243,36 @@ class MainWindow(QMainWindow):
         animation_layout.addWidget(self.animation_intensity)
         preview_panel.addWidget(animation_controls)
 
+        self.preview_tabs = QTabWidget()
         self.preview = TexturePreview()
-        preview_panel.addWidget(self.preview, 1)
+        self.preview_tabs.addTab(self.preview, "2D Preview")
+
+        three_d_page = QWidget()
+        three_d_layout = QVBoxLayout(three_d_page)
+        three_d_controls = QHBoxLayout()
+        self.mesh_selector = QComboBox()
+        self.mesh_selector.addItems(["Plane", "Cube", "Sphere", "Cylinder"])
+        self.mesh_selector.currentTextChanged.connect(self._set_3d_mesh)
+        self.uv_scale = self._double(1.0, 0.1, 12.0, 0.1)
+        self.uv_scale.valueChanged.connect(self._set_3d_uv_scale)
+        self.normal_preview_strength = self._double(1.0, 0.0, 3.0, 0.1)
+        self.normal_preview_strength.valueChanged.connect(self._set_3d_normal_strength)
+        three_d_controls.addWidget(QLabel("Object"))
+        three_d_controls.addWidget(self.mesh_selector)
+        three_d_controls.addWidget(QLabel("UV tiling"))
+        three_d_controls.addWidget(self.uv_scale)
+        three_d_controls.addWidget(QLabel("Normal intensity"))
+        three_d_controls.addWidget(self.normal_preview_strength)
+        three_d_controls.addStretch(1)
+        three_d_layout.addLayout(three_d_controls)
+        self.preview_3d = NormalMap3DPreview()
+        three_d_layout.addWidget(self.preview_3d, 1)
+        three_d_hint = QLabel("Drag to rotate · Normal Map updates when a new result is generated")
+        three_d_hint.setStyleSheet("color: #9ba5b3;")
+        three_d_layout.addWidget(three_d_hint)
+        self.preview_tabs.addTab(three_d_page, "3D Material Preview")
+        preview_panel.addWidget(self.preview_tabs, 1)
+
         self.progress = QProgressBar()
         self.progress.setValue(0)
         self.status = QLabel("Ready")
@@ -401,6 +430,7 @@ class MainWindow(QMainWindow):
         self.current_image = image
         self.preview_comparison.setCurrentText("Result")
         self._refresh_preview()
+        self.preview_3d.set_normal_map(image)
         h, w, _ = image.shape
         self.info.setText(f"{w} × {h} px")
         self.status.setText(
@@ -433,6 +463,15 @@ class MainWindow(QMainWindow):
 
     def _reset_preview_view(self):
         self.preview.reset_view()
+
+    def _set_3d_mesh(self, name: str):
+        self.preview_3d.set_mesh(name)
+
+    def _set_3d_uv_scale(self, value: float):
+        self.preview_3d.set_uv_scale(value)
+
+    def _set_3d_normal_strength(self, value: float):
+        self.preview_3d.set_normal_strength(value)
 
     def _toggle_animation(self, enabled: bool):
         self.preview.set_animation_enabled(enabled)
