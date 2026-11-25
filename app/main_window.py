@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import secrets
 import numpy as np
-from PySide6.QtCore import QObject, QThread, Signal, Qt
+from PySide6.QtCore import QObject, QThread, Signal
 from app.preview import TexturePreview
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QComboBox, QSpinBox,
@@ -180,11 +180,6 @@ class MainWindow(QMainWindow):
         self.convert_button.setEnabled(False)
         self.convert_button.clicked.connect(self.convert_image)
         image_layout.addWidget(self.convert_button)
-        self.show_source_button = QPushButton("Show source image")
-        self.show_source_button.setCheckable(True)
-        self.show_source_button.setEnabled(False)
-        self.show_source_button.toggled.connect(self._refresh_preview)
-        image_layout.addWidget(self.show_source_button)
         panel.addWidget(image_group)
 
         panel.addStretch(1)
@@ -321,8 +316,7 @@ class MainWindow(QMainWindow):
         try:
             self._read_source_image()
             self.convert_button.setEnabled(True)
-            self.show_source_button.setEnabled(True)
-            self.show_source_button.setChecked(True)
+            self.preview_comparison.setCurrentText("Source")
             self.info.setText(f"Source: {self.source_image.shape[1]} × {self.source_image.shape[0]}")
             self.status.setText(f"Loaded height image: {self.source_path.name}")
         except Exception as exc:
@@ -380,8 +374,7 @@ class MainWindow(QMainWindow):
     def _on_generated(self, image: np.ndarray):
         self.progress.setValue(100)
         self.current_image = image
-        self.show_source_button.setChecked(False)
-        self.show_source_button.setEnabled(self.source_image is not None)
+        self.preview_comparison.setCurrentText("Result")
         self._refresh_preview()
         h, w, _ = image.shape
         self.info.setText(f"{w} × {h} px")
