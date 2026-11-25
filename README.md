@@ -46,36 +46,29 @@ A desktop tool for procedural water-surface tangent-space Normal Map generation 
 - NumPy implementations remain available as a compatible fallback when the native extension has not been built.
 - OpenGL/GLSL remains responsible for interactive 3D material rendering; this is currently a renderer, not yet a compute-shader backend.
 
-### Build the native engine
+### Easy installation (Windows)
 
-Install the project in editable mode to compile the C++ extension with the local C++ toolchain:
+Download `AquaForge-Windows-x64.zip` from the project's GitHub Releases, extract the archive, then launch:
+
+```text
+AquaForge/AquaForge.exe
+```
+
+No Python installation, pip commands or C++ compiler are required. The portable package already contains the Python runtime, Qt dependencies and the compiled C++ engine.
+
+Windows builds are produced automatically by GitHub Actions. Every version tag beginning with `v` publishes a GitHub Release with the ZIP package attached.
+
+### Run from source
+
+Developers can still run the application from source:
 
 ```bash
+python -m pip install -r requirements.txt
 python -m pip install -e .
-```
-
-On Windows, install Visual Studio Build Tools with the C++ desktop workload. On macOS, install Xcode Command Line Tools. On Linux, install a C++17 compiler such as GCC or Clang.
-
-If the extension is not built, run `python main.py` as usual; AquaForge automatically uses its NumPy fallback.
-
-## Requirements
-
-Python 3.10+ is supported. Install dependencies:
-
-```bash
-python -m venv .venv
-# Windows:
-.venv\\Scripts\\activate
-# macOS/Linux:
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Run:
-
-```bash
 python main.py
 ```
+
+The editable install compiles the optional C++ engine. If it is not built, AquaForge falls back to NumPy.
 
 ## Tests
 
