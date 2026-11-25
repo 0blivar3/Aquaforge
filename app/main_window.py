@@ -259,12 +259,16 @@ class MainWindow(QMainWindow):
         self.uv_scale.valueChanged.connect(self._set_3d_uv_scale)
         self.normal_preview_strength = self._double(1.0, 0.0, 3.0, 0.1)
         self.normal_preview_strength.valueChanged.connect(self._set_3d_normal_strength)
+        self.preview_light = self._double(1.0, 0.0, 3.0, 0.1)
+        self.preview_light.valueChanged.connect(self._set_3d_light_intensity)
         three_d_controls.addWidget(QLabel("Object"))
         three_d_controls.addWidget(self.mesh_selector)
         three_d_controls.addWidget(QLabel("UV tiling"))
         three_d_controls.addWidget(self.uv_scale)
         three_d_controls.addWidget(QLabel("Normal intensity"))
         three_d_controls.addWidget(self.normal_preview_strength)
+        three_d_controls.addWidget(QLabel("Light"))
+        three_d_controls.addWidget(self.preview_light)
         three_d_controls.addStretch(1)
         three_d_layout.addLayout(three_d_controls)
         self.preview_3d = NormalMap3DPreview()
@@ -473,6 +477,9 @@ class MainWindow(QMainWindow):
 
     def _set_3d_normal_strength(self, value: float):
         self.preview_3d.set_normal_strength(value)
+
+    def _set_3d_light_intensity(self, value: float):
+        self.preview_3d.set_light_intensity(value)
 
     def _toggle_animation(self, enabled: bool):
         self.preview.set_animation_enabled(enabled)
