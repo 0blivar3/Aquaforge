@@ -11,7 +11,7 @@ from app.theme import DARK_THEME
 def main() -> int:
     surface_format = QSurfaceFormat()
     surface_format.setVersion(2, 1)
-    surface_format.setProfile(QSurfaceFormat.OpenGLContextProfile.CompatibilityProfile)
+    surface_format.setProfile(QSurfaceFormat.OpenGLContextProfile.NoProfile)
     QSurfaceFormat.setDefaultFormat(surface_format)
     app = QApplication(sys.argv)
     app.setApplicationName("AquaForge")
