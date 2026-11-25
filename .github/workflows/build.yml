@@ -1,13 +1,19 @@
-name: Build and test
+name: Test and package AquaForge
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
-  native-tests:
+  test:
+    name: Tests (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -19,10 +25,59 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install project and compile C++ extension
+      - name: Install dependencies and compile native engine
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install -e .
       - name: Run tests
         run: python -m pytest -q
+
+  package-windows:
+    name: Build portable Windows application
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install application and compile C++ engine
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+      - name: Install packager
+        run: python -m pip install "pyinstaller>=6.10"
+      - name: Build AquaForge
+        run: python -m PyInstaller --noconfirm --clean AquaForge.spec
+      - name: Verify executable and create portable ZIP
+        shell: pwsh
+        run: |
+          if (!(Test-Path "dist/AquaForge/AquaForge.exe")) {
+            throw "AquaForge.exe was not produced."
+          }
+          Compress-Archive -Path "dist/AquaForge" -DestinationPath "dist/AquaForge-Windows-x64.zip" -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AquaForge-Windows-x64
+          path: dist/AquaForge-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: package-windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: AquaForge-Windows-x64
+          path: release-files
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/AquaForge-Windows-x64.zip
+          generate_release_notes: true
