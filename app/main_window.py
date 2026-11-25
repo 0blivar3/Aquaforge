@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 from pathlib import Path
+import secrets
 import numpy as np
 from PySide6.QtCore import QObject, QThread, Signal, Qt
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QComboBox, QSpinBox,
-    QDoubleSpinBox, QSlider, QProgressBar, QFileDialog, QMessageBox,
-    QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QScrollArea
+    QDoubleSpinBox, QProgressBar, QFileDialog, QMessageBox,
+    QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QScrollArea,
+    QInputDialog
 )
 
 from core.generator import GeneratorSettings, generate_heightmap
 from core.normal_math import height_to_normal
+from core.image_to_normal import load_height_image, convert_height_image, CHANNELS
+from core.presets import BUILTIN_PRESETS, load_custom_presets, save_custom_preset
 from export.exporter import save_normal_map
 
 
@@ -28,9 +32,32 @@ class GenerationWorker(QObject):
     def run(self):
         try:
             height = generate_heightmap(self.settings, self.progress.emit)
-            result = height_to_normal(height, strength=5.0, y_convention=self.convention,
-                                      seamless=self.settings.seamless)
+            result = height_to_normal(
+                height, strength=5.0, y_convention=self.convention,
+                seamless=self.settings.seamless
+            )
             self.finished.emit(result)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class ImageConversionWorker(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, height: np.ndarray, strength: float,
+                 convention: str, seamless: bool):
+        super().__init__()
+        self.height = height
+        self.strength = strength
+        self.convention = convention
+        self.seamless = seamless
+
+    def run(self):
+        try:
+            self.finished.emit(convert_height_image(
+                self.height, self.strength, self.convention, self.seamless
+            ))
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -39,10 +66,16 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AquaForge — Water Normal Map Generator")
-        self.resize(1280, 820)
+        self.resize(1320, 860)
         self.current_image: np.ndarray | None = None
+        self.source_image: np.ndarray | None = None
+        self.source_height: np.ndarray | None = None
+        self.source_path: Path | None = None
+        self.seed = 12345
         self.thread: QThread | None = None
+        self._loading_presets = False
         self._build_ui()
+        self._refresh_presets()
 
     def _build_ui(self):
         root = QWidget()
@@ -58,6 +91,16 @@ class MainWindow(QMainWindow):
         subtitle.setStyleSheet("color: #9ba5b3;")
         panel.addWidget(title)
         panel.addWidget(subtitle)
+
+        preset_group = QGroupBox("Presets")
+        preset_layout = QVBoxLayout(preset_group)
+        self.preset_combo = QComboBox()
+        self.preset_combo.currentTextChanged.connect(self._apply_selected_preset)
+        self.save_preset_button = QPushButton("Save current settings as preset…")
+        self.save_preset_button.clicked.connect(self._save_preset)
+        preset_layout.addWidget(self.preset_combo)
+        preset_layout.addWidget(self.save_preset_button)
+        panel.addWidget(preset_group)
 
         resolution = QGroupBox("Output")
         form = QFormLayout(resolution)
@@ -104,7 +147,7 @@ class MainWindow(QMainWindow):
             "Seamless mode: ON" if checked else "Seamless mode: OFF"))
         panel.addWidget(self.seamless)
 
-        actions = QGroupBox("Actions")
+        actions = QGroupBox("Procedural generation")
         af = QVBoxLayout(actions)
         self.generate_button = QPushButton("Generate Normal Map")
         self.generate_button.setDefault(True)
@@ -118,22 +161,50 @@ class MainWindow(QMainWindow):
         af.addWidget(self.random_button)
         af.addWidget(self.export_button)
         panel.addWidget(actions)
+
+        image_group = QGroupBox("Image to Normal")
+        image_layout = QVBoxLayout(image_group)
+        self.load_image_button = QPushButton("Load height image…")
+        self.load_image_button.clicked.connect(self.load_source_image)
+        image_layout.addWidget(self.load_image_button)
+        image_form = QFormLayout()
+        self.image_channel = QComboBox()
+        self.image_channel.addItems(list(CHANNELS))
+        self.image_channel.currentTextChanged.connect(self._reload_source_channel)
+        self.image_strength = self._double(5.0, 0.0, 30.0, 0.25)
+        image_form.addRow("Source channel", self.image_channel)
+        image_form.addRow("Normal strength", self.image_strength)
+        image_layout.addLayout(image_form)
+        self.convert_button = QPushButton("Convert image to Normal Map")
+        self.convert_button.setEnabled(False)
+        self.convert_button.clicked.connect(self.convert_image)
+        image_layout.addWidget(self.convert_button)
+        self.show_source_button = QPushButton("Show source image")
+        self.show_source_button.setCheckable(True)
+        self.show_source_button.setEnabled(False)
+        self.show_source_button.toggled.connect(self._refresh_preview)
+        image_layout.addWidget(self.show_source_button)
+        panel.addWidget(image_group)
+
         panel.addStretch(1)
         controls_scroll.setWidget(controls)
-        controls_scroll.setMinimumWidth(330)
+        controls_scroll.setMinimumWidth(350)
         layout.addWidget(controls_scroll, 0)
 
         preview_panel = QVBoxLayout()
         preview_header = QHBoxLayout()
-        preview_header.addWidget(QLabel("2D NORMAL MAP PREVIEW"))
+        preview_header.addWidget(QLabel("2D TEXTURE PREVIEW"))
         preview_header.addStretch(1)
-        self.info = QLabel("No texture generated")
+        self.info = QLabel("No texture loaded")
         preview_header.addWidget(self.info)
         preview_panel.addLayout(preview_header)
-        self.preview = QLabel("Click Generate to create your first water normal map")
+        self.preview = QLabel("Generate a texture or load a height image")
         self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview.setMinimumSize(500, 500)
-        self.preview.setStyleSheet("background: #15181d; border: 1px solid #3b414b; border-radius: 6px; color: #87919e;")
+        self.preview.setStyleSheet(
+            "background: #15181d; border: 1px solid #3b414b; "
+            "border-radius: 6px; color: #87919e;"
+        )
         preview_panel.addWidget(self.preview, 1)
         self.progress = QProgressBar()
         self.progress.setValue(0)
@@ -159,50 +230,172 @@ class MainWindow(QMainWindow):
             frequency=self.frequency.value(), direction=self.direction.value(),
             wind_strength=self.wind.value(), ripple_intensity=self.ripple.value(),
             ripple_scale=self.ripple_scale.value(), detail=self.detail.value(),
-            distortion=self.distortion.value(), seed=getattr(self, "seed", 12345),
+            distortion=self.distortion.value(), seed=self.seed,
             seamless=self.seamless.isChecked()
         )
+
+    def _set_settings(self, values: dict):
+        widgets = {
+            "wave_scale": self.wave_scale, "wave_strength": self.wave_strength,
+            "frequency": self.frequency, "direction": self.direction,
+            "wind_strength": self.wind, "ripple_intensity": self.ripple,
+            "ripple_scale": self.ripple_scale, "detail": self.detail,
+            "distortion": self.distortion,
+        }
+        for key, widget in widgets.items():
+            if key in values:
+                widget.setValue(values[key])
+
+    def _refresh_presets(self):
+        custom = load_custom_presets()
+        self._custom_presets = custom
+        self._loading_presets = True
+        self.preset_combo.clear()
+        self.preset_combo.addItems(list(BUILTIN_PRESETS) + list(custom))
+        self._loading_presets = False
+        self.preset_combo.setCurrentIndex(-1)
+
+    def _apply_selected_preset(self, name: str):
+        if self._loading_presets or not name:
+            return
+        values = BUILTIN_PRESETS.get(name, getattr(self, "_custom_presets", {}).get(name))
+        if values:
+            self._set_settings(values)
+            self.status.setText(f"Preset applied: {name}")
+
+    def _save_preset(self):
+        name, accepted = QInputDialog.getText(self, "Save preset", "Preset name:")
+        if not accepted:
+            return
+        try:
+            save_custom_preset(name, self._settings())
+            self._refresh_presets()
+            index = self.preset_combo.findText(name.strip())
+            if index >= 0:
+                self.preset_combo.setCurrentIndex(index)
+            self.status.setText(f"Preset saved: {name.strip()}")
+        except Exception as exc:
+            QMessageBox.warning(self, "Could not save preset", str(exc))
 
     def generate(self):
         if self.thread and self.thread.isRunning():
             return
         self.generate_button.setEnabled(False)
+        self.convert_button.setEnabled(False)
         self.export_button.setEnabled(False)
         self.progress.setValue(0)
         self.status.setText("Generating on CPU…")
+        worker = GenerationWorker(
+            self._settings(),
+            "OpenGL" if self.convention.currentIndex() == 0 else "DirectX"
+        )
+        self._start_worker(worker, worker.progress)
+
+    def load_source_image(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load height image", "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp)"
+        )
+        if not path:
+            return
+        self.source_path = Path(path)
+        try:
+            self._read_source_image()
+            self.convert_button.setEnabled(True)
+            self.show_source_button.setEnabled(True)
+            self.show_source_button.setChecked(True)
+            self.info.setText(f"Source: {self.source_image.shape[1]} × {self.source_image.shape[0]}")
+            self.status.setText(f"Loaded height image: {self.source_path.name}")
+        except Exception as exc:
+            self.source_height = None
+            self.source_image = None
+            QMessageBox.critical(self, "Image loading error", str(exc))
+
+    def _read_source_image(self):
+        if self.source_path is None:
+            return
+        self.source_height, self.source_image = load_height_image(
+            self.source_path, self.image_channel.currentText()
+        )
+        self._refresh_preview()
+
+    def _reload_source_channel(self, _channel: str):
+        if self.source_path is not None:
+            try:
+                self._read_source_image()
+            except Exception as exc:
+                QMessageBox.critical(self, "Image loading error", str(exc))
+
+    def convert_image(self):
+        if self.source_height is None or (self.thread and self.thread.isRunning()):
+            return
+        self.generate_button.setEnabled(False)
+        self.convert_button.setEnabled(False)
+        self.export_button.setEnabled(False)
+        self.progress.setValue(0)
+        self.status.setText("Converting image…")
+        worker = ImageConversionWorker(
+            self.source_height.copy(), self.image_strength.value(),
+            "OpenGL" if self.convention.currentIndex() == 0 else "DirectX",
+            self.seamless.isChecked()
+        )
+        self._start_worker(worker)
+
+    def _start_worker(self, worker: QObject, progress_signal=None):
         self.thread = QThread(self)
-        self.worker = GenerationWorker(self._settings(), "OpenGL" if self.convention.currentIndex() == 0 else "DirectX")
-        self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
-        self.worker.progress.connect(self.progress.setValue)
-        self.worker.finished.connect(self._on_generated)
-        self.worker.failed.connect(self._on_failed)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.failed.connect(self.thread.quit)
+        self.worker = worker
+        worker.moveToThread(self.thread)
+        self.thread.started.connect(worker.run)
+        if progress_signal is not None:
+            progress_signal.connect(self.progress.setValue)
+        worker.finished.connect(self._on_generated)
+        worker.failed.connect(self._on_failed)
+        worker.finished.connect(self.thread.quit)
+        worker.failed.connect(self.thread.quit)
+        self.thread.finished.connect(worker.deleteLater)
         self.thread.finished.connect(self._thread_finished)
         self.thread.start()
 
     def _on_generated(self, image: np.ndarray):
         self.current_image = image
+        self.show_source_button.setChecked(False)
+        self.show_source_button.setEnabled(self.source_image is not None)
+        self._refresh_preview()
         h, w, _ = image.shape
-        qimage = QImage(image.data, w, h, 3 * w, QImage.Format.Format_RGB888).copy()
-        pixmap = QPixmap.fromImage(qimage)
-        self.preview.setPixmap(pixmap.scaled(self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio,
-                                             Qt.TransformationMode.SmoothTransformation))
         self.info.setText(f"{w} × {h} px")
-        self.status.setText("Generation complete")
+        self.status.setText("Conversion complete" if self.source_height is not None
+                            and self.source_path is not None else "Generation complete")
         self.export_button.setEnabled(True)
 
     def _on_failed(self, message: str):
-        self.status.setText("Generation failed")
-        QMessageBox.critical(self, "Generation error", message)
+        self.status.setText("Operation failed")
+        QMessageBox.critical(self, "Processing error", message)
 
     def _thread_finished(self):
         self.generate_button.setEnabled(True)
+        self.convert_button.setEnabled(self.source_height is not None)
         self.thread = None
 
+    def _preview_array(self) -> np.ndarray | None:
+        if self.show_source_button.isChecked() and self.source_image is not None:
+            return self.source_image
+        return self.current_image
+
+    def _refresh_preview(self):
+        image = self._preview_array()
+        if image is None:
+            return
+        h, w = image.shape[:2]
+        if image.ndim == 2:
+            image = np.repeat(image[..., None], 3, axis=2)
+        image = np.ascontiguousarray(image, dtype=np.uint8)
+        qimage = QImage(image.data, w, h, 3 * w, QImage.Format.Format_RGB888).copy()
+        self.preview.setPixmap(QPixmap.fromImage(qimage).scaled(
+            self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        ))
+
     def randomize_seed(self):
-        import secrets
         self.seed = secrets.randbelow(2**31)
         self.status.setText(f"Seed: {self.seed}")
 
@@ -219,10 +412,11 @@ class MainWindow(QMainWindow):
         if not target.suffix:
             target = target.with_suffix(".png")
         if target.exists():
-            answer = QMessageBox.question(self, "Overwrite file?",
-                f"{target} already exists. Replace it?",
+            answer = QMessageBox.question(
+                self, "Overwrite file?", f"{target} already exists. Replace it?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No)
+                QMessageBox.StandardButton.No
+            )
             if answer != QMessageBox.StandardButton.Yes:
                 return
         try:
@@ -234,10 +428,4 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if self.current_image is not None:
-            h, w, _ = self.current_image.shape
-            qimage = QImage(self.current_image.data, w, h, 3*w, QImage.Format.Format_RGB888).copy()
-            self.preview.setPixmap(QPixmap.fromImage(qimage).scaled(
-                self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation))
-
+        self._refresh_preview()
