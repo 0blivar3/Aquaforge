@@ -53,6 +53,7 @@ uniform sampler2D normal_map;
 uniform vec3 light_position;
 uniform float uv_scale;
 uniform float normal_strength;
+uniform float light_intensity;
 varying vec2 v_uv;
 varying mat3 v_tbn;
 varying vec3 v_world;
@@ -66,7 +67,7 @@ void main() {
     float diffuse = max(dot(N, L), 0.0);
     float specular = pow(max(dot(N, H), 0.0), 48.0) * 0.35;
     vec3 base = vec3(0.055, 0.36, 0.52);
-    vec3 color = base * (0.22 + diffuse * 0.9) + vec3(specular);
+    vec3 color = base * (0.18 + diffuse * light_intensity) + vec3(specular * light_intensity);
     gl_FragColor = vec4(color, 1.0);
 }
 """
@@ -153,6 +154,7 @@ class NormalMap3DPreview(QOpenGLWidget):
         self.normal_image=None
         self.uv_scale=1.0
         self.normal_strength=1.0
+        self.light_intensity=1.0
         self.rotation_x=28.0
         self.rotation_y=-28.0
         self._drag=None
@@ -181,6 +183,9 @@ class NormalMap3DPreview(QOpenGLWidget):
 
     def set_normal_strength(self,value):
         self.normal_strength=float(value); self.update()
+
+    def set_light_intensity(self,value):
+        self.light_intensity=float(value); self.update()
 
     def initializeGL(self):
         try:
@@ -252,6 +257,7 @@ class NormalMap3DPreview(QOpenGLWidget):
         self._program.setUniformValue("light_position",QVector3D(-2.5,4.0,3.0))
         self._program.setUniformValue("uv_scale",self.uv_scale)
         self._program.setUniformValue("normal_strength",self.normal_strength)
+        self._program.setUniformValue("light_intensity",self.light_intensity)
         self._program.setUniformValue("normal_map",0)
         glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D,self._texture)
         stride=11*4
