@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace py = pybind11;
