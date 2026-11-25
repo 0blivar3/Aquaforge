@@ -32,7 +32,7 @@ A desktop tool for procedural water-surface tangent-space Normal Map generation 
 ### Real-time 3D material preview
 - OpenGL preview with Plane, Cube, Sphere and Cylinder meshes.
 - Tangent-space Normal Map shader with diffuse and specular lighting.
-- Adjustable UV tiling and normal intensity.
+- Adjustable UV tiling, normal intensity and light intensity.
 - Drag the viewport to rotate the preview object.
 - The latest generated or converted Normal Map is uploaded to the 3D material preview.
 
