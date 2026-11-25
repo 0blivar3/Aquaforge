@@ -107,18 +107,18 @@ py::array_t<uint8_t> height_to_normal(
     auto info = input.request();
     if (info.ndim != 2 || info.shape[0] < 2 || info.shape[1] < 2)
         throw std::invalid_argument("height must be a 2D array at least 2x2");
-    const ssize_t h = info.shape[0], w = info.shape[1];
+    const py::ssize_t h = info.shape[0], w = info.shape[1];
     const auto* src = static_cast<const float*>(info.ptr);
-    py::array_t<uint8_t> output({h, w, static_cast<ssize_t>(3)});
+    py::array_t<uint8_t> output({h, w, static_cast<py::ssize_t>(3)});
     auto* dst = output.mutable_data();
     {
         py::gil_scoped_release release;
-        for (ssize_t y = 0; y < h; ++y) {
-            const ssize_t ym = seamless ? (y + h - 1) % h : std::max<ssize_t>(0, y - 1);
-            const ssize_t yp = seamless ? (y + 1) % h : std::min<ssize_t>(h - 1, y + 1);
-            for (ssize_t x = 0; x < w; ++x) {
-                const ssize_t xm = seamless ? (x + w - 1) % w : std::max<ssize_t>(0, x - 1);
-                const ssize_t xp = seamless ? (x + 1) % w : std::min<ssize_t>(w - 1, x + 1);
+        for (py::ssize_t y = 0; y < h; ++y) {
+            const py::ssize_t ym = seamless ? (y + h - 1) % h : std::max<py::ssize_t>(0, y - 1);
+            const py::ssize_t yp = seamless ? (y + 1) % h : std::min<py::ssize_t>(h - 1, y + 1);
+            for (py::ssize_t x = 0; x < w; ++x) {
+                const py::ssize_t xm = seamless ? (x + w - 1) % w : std::max<py::ssize_t>(0, x - 1);
+                const py::ssize_t xp = seamless ? (x + 1) % w : std::min<py::ssize_t>(w - 1, x + 1);
                 const double dx = (src[y*w+xp] - src[y*w+xm]) *
                     (seamless ? 0.5 : (x == 0 || x == w-1 ? 1.0 : 0.5));
                 double dy = (src[yp*w+x] - src[ym*w+x]) *
@@ -129,7 +129,7 @@ py::array_t<uint8_t> height_to_normal(
                 const double inv = 1.0 / std::sqrt(nx*nx + ny*ny + 1.0);
                 nx *= inv; ny *= inv;
                 const double nz = inv;
-                const ssize_t i = (y*w+x)*3;
+                const py::ssize_t i = (y*w+x)*3;
                 dst[i] = static_cast<uint8_t>(std::clamp(std::lround((nx*0.5+0.5)*255.0), 0L, 255L));
                 dst[i+1] = static_cast<uint8_t>(std::clamp(std::lround((ny*0.5+0.5)*255.0), 0L, 255L));
                 dst[i+2] = static_cast<uint8_t>(std::clamp(std::lround((nz*0.5+0.5)*255.0), 0L, 255L));
