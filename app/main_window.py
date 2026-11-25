@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.generator import GeneratorSettings, generate_heightmap
+from core.native_backend import backend_name
 from core.normal_math import height_to_normal
 from core.image_to_normal import load_height_image, convert_height_image, CHANNELS
 from core.presets import BUILTIN_PRESETS, load_custom_presets, save_custom_preset
@@ -358,7 +359,7 @@ class MainWindow(QMainWindow):
         self.export_button.setEnabled(False)
         self.progress.setValue(0)
         self.active_operation = "generation"
-        self.status.setText("Generating on CPU…")
+        self.status.setText(f"Generating with {backend_name()}…")
         worker = GenerationWorker(
             self._settings(),
             "OpenGL" if self.convention.currentIndex() == 0 else "DirectX"
@@ -435,8 +436,8 @@ class MainWindow(QMainWindow):
         self.progress.setValue(value)
         if self.active_operation == "generation":
             self.status.setText(
-                "Generating height field…" if value < 75
-                else "Converting height field to Normal Map…"
+                f"Generating height field · {backend_name()}…" if value < 75
+                else f"Converting height field to Normal Map · {backend_name()}…"
             )
 
     def _on_generated(self, image: np.ndarray):
@@ -449,7 +450,7 @@ class MainWindow(QMainWindow):
         self.info.setText(f"{w} × {h} px")
         self.status.setText(
             "Image conversion complete" if self.active_operation == "conversion"
-            else "Generation complete"
+            else f"Generation complete · {backend_name()}"
         )
         self.export_button.setEnabled(True)
         self.animation_button.setEnabled(True)
