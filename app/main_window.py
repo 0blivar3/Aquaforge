@@ -393,11 +393,6 @@ class MainWindow(QMainWindow):
         self.convert_button.setEnabled(self.source_height is not None)
         self.thread = None
 
-    def _preview_array(self) -> np.ndarray | None:
-        if self.show_source_button.isChecked() and self.source_image is not None:
-            return self.source_image
-        return self.current_image
-
     def _refresh_preview(self):
         self.preview.set_images(self.current_image, self.source_image)
 
