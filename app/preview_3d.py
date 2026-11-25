@@ -15,7 +15,7 @@ from OpenGL.GL import (
     GL_FALSE, GL_TRIANGLES, GL_UNSIGNED_INT, GL_TEXTURE_2D, GL_TEXTURE0,
     GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER, GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR,
     GL_REPEAT, GL_RGB, GL_RGB8, GL_UNSIGNED_BYTE, GL_DEPTH_TEST, GL_COLOR_BUFFER_BIT,
-    GL_DEPTH_BUFFER_BIT, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER,
+    GL_DEPTH_BUFFER_BIT, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_UNPACK_ALIGNMENT,
     glGenBuffers, glBindBuffer, glBufferData, glEnableVertexAttribArray,
     glVertexAttribPointer, glDrawElements, glGenTextures, glBindTexture,
     glTexParameteri, glTexImage2D, glGenerateMipmap, glActiveTexture, glEnable,
