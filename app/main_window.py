@@ -355,11 +355,13 @@ class MainWindow(QMainWindow):
         worker.failed.connect(self._on_failed)
         worker.finished.connect(self.thread.quit)
         worker.failed.connect(self.thread.quit)
-        self.thread.finished.connect(worker.deleteLater)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
         self.thread.finished.connect(self._thread_finished)
         self.thread.start()
 
     def _on_generated(self, image: np.ndarray):
+        self.progress.setValue(100)
         self.current_image = image
         self.show_source_button.setChecked(False)
         self.show_source_button.setEnabled(self.source_image is not None)
