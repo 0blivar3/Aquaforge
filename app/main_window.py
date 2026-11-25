@@ -217,6 +217,30 @@ class MainWindow(QMainWindow):
         preview_controls.addWidget(self.reset_view_button)
         preview_panel.addLayout(preview_controls)
 
+        animation_controls = QGroupBox("Animated preview")
+        animation_layout = QHBoxLayout(animation_controls)
+        self.animation_button = QPushButton("Play")
+        self.animation_button.setCheckable(True)
+        self.animation_button.setEnabled(False)
+        self.animation_button.toggled.connect(self._toggle_animation)
+        self.animation_direction = QComboBox()
+        self.animation_direction.addItems(["Right", "Left", "Down", "Up", "Diagonal"])
+        self.animation_direction.currentTextChanged.connect(
+            self.preview_direction_changed
+        )
+        self.animation_speed = self._double(1.0, 0.1, 3.0, 0.1)
+        self.animation_speed.valueChanged.connect(self._animation_speed_changed)
+        self.animation_intensity = self._double(1.0, 0.0, 2.0, 0.1)
+        self.animation_intensity.valueChanged.connect(self._animation_intensity_changed)
+        animation_layout.addWidget(self.animation_button)
+        animation_layout.addWidget(QLabel("Direction"))
+        animation_layout.addWidget(self.animation_direction)
+        animation_layout.addWidget(QLabel("Speed"))
+        animation_layout.addWidget(self.animation_speed)
+        animation_layout.addWidget(QLabel("Motion"))
+        animation_layout.addWidget(self.animation_intensity)
+        preview_panel.addWidget(animation_controls)
+
         self.preview = TexturePreview()
         preview_panel.addWidget(self.preview, 1)
         self.progress = QProgressBar()
@@ -383,6 +407,7 @@ class MainWindow(QMainWindow):
             else "Generation complete"
         )
         self.export_button.setEnabled(True)
+        self.animation_button.setEnabled(True)
 
     def _on_failed(self, message: str):
         self.status.setText("Operation failed")
@@ -407,6 +432,23 @@ class MainWindow(QMainWindow):
 
     def _reset_preview_view(self):
         self.preview.reset_view()
+
+    def _toggle_animation(self, enabled: bool):
+        self.preview.set_animation_enabled(enabled)
+        self.animation_button.setText("Pause" if enabled else "Play")
+        if enabled:
+            self.status.setText("Animated preview running — export remains static")
+        else:
+            self.status.setText("Animated preview paused")
+
+    def preview_direction_changed(self, direction: str):
+        self.preview.set_animation_direction(direction)
+
+    def _animation_speed_changed(self, value: float):
+        self.preview.set_animation_speed(value)
+
+    def _animation_intensity_changed(self, value: float):
+        self.preview.set_animation_intensity(value)
 
     def randomize_seed(self):
         self.seed = secrets.randbelow(2**31)
