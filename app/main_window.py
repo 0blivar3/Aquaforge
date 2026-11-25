@@ -4,7 +4,7 @@ from pathlib import Path
 import secrets
 import numpy as np
 from PySide6.QtCore import QObject, QThread, Signal, Qt
-from PySide6.QtGui import QImage, QPixmap
+from app.preview import TexturePreview
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QComboBox, QSpinBox,
     QDoubleSpinBox, QProgressBar, QFileDialog, QMessageBox,
@@ -199,13 +199,30 @@ class MainWindow(QMainWindow):
         self.info = QLabel("No texture loaded")
         preview_header.addWidget(self.info)
         preview_panel.addLayout(preview_header)
-        self.preview = QLabel("Generate a texture or load a height image")
-        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview.setMinimumSize(500, 500)
-        self.preview.setStyleSheet(
-            "background: #15181d; border: 1px solid #3b414b; "
-            "border-radius: 6px; color: #87919e;"
-        )
+
+        preview_controls = QHBoxLayout()
+        self.preview_mode = QComboBox()
+        self.preview_mode.addItems(["Single", "3x3 Tiling"])
+        self.preview_mode.currentTextChanged.connect(self._set_preview_mode)
+        self.preview_channel = QComboBox()
+        self.preview_channel.addItems(["RGB", "R", "G", "B"])
+        self.preview_channel.currentTextChanged.connect(self._set_preview_channel)
+        self.preview_comparison = QComboBox()
+        self.preview_comparison.addItems(["Result", "Source", "Side by side"])
+        self.preview_comparison.currentTextChanged.connect(self._set_preview_comparison)
+        self.reset_view_button = QPushButton("Reset View")
+        self.reset_view_button.clicked.connect(self._reset_preview_view)
+        preview_controls.addWidget(QLabel("View"))
+        preview_controls.addWidget(self.preview_mode)
+        preview_controls.addWidget(QLabel("Channel"))
+        preview_controls.addWidget(self.preview_channel)
+        preview_controls.addWidget(QLabel("Compare"))
+        preview_controls.addWidget(self.preview_comparison)
+        preview_controls.addStretch(1)
+        preview_controls.addWidget(self.reset_view_button)
+        preview_panel.addLayout(preview_controls)
+
+        self.preview = TexturePreview()
         preview_panel.addWidget(self.preview, 1)
         self.progress = QProgressBar()
         self.progress.setValue(0)
@@ -389,18 +406,19 @@ class MainWindow(QMainWindow):
         return self.current_image
 
     def _refresh_preview(self):
-        image = self._preview_array()
-        if image is None:
-            return
-        h, w = image.shape[:2]
-        if image.ndim == 2:
-            image = np.repeat(image[..., None], 3, axis=2)
-        image = np.ascontiguousarray(image, dtype=np.uint8)
-        qimage = QImage(image.data, w, h, 3 * w, QImage.Format.Format_RGB888).copy()
-        self.preview.setPixmap(QPixmap.fromImage(qimage).scaled(
-            self.preview.size(), Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation
-        ))
+        self.preview.set_images(self.current_image, self.source_image)
+
+    def _set_preview_mode(self, mode: str):
+        self.preview.set_view_mode(mode)
+
+    def _set_preview_channel(self, channel: str):
+        self.preview.set_channel(channel)
+
+    def _set_preview_comparison(self, comparison: str):
+        self.preview.set_comparison(comparison)
+
+    def _reset_preview_view(self):
+        self.preview.reset_view()
 
     def randomize_seed(self):
         self.seed = secrets.randbelow(2**31)
@@ -435,4 +453,3 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._refresh_preview()
