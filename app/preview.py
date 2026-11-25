@@ -57,9 +57,8 @@ class TexturePreview(QWidget):
         pixels = np.ascontiguousarray(pixels[..., :3], dtype=np.uint8)
         if self.channel in {"R", "G", "B"}:
             index = {"R": 0, "G": 1, "B": 2}[self.channel]
-            isolated = np.zeros_like(pixels)
-            isolated[..., index] = pixels[..., index]
-            pixels = isolated
+            channel_data = pixels[..., index:index + 1]
+            pixels = np.repeat(channel_data, 3, axis=2)
         height, width, _ = pixels.shape
         return QImage(pixels.data, width, height, width * 3,
                       QImage.Format.Format_RGB888).copy()
