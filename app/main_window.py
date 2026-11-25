@@ -35,7 +35,8 @@ class GenerationWorker(QObject):
             height = generate_heightmap(self.settings, self.progress.emit)
             result = height_to_normal(
                 height, strength=5.0, y_convention=self.convention,
-                seamless=self.settings.seamless
+                seamless=self.settings.seamless,
+                progress=lambda value: self.progress.emit(75 + int(value * 0.25))
             )
             self.finished.emit(result)
         except Exception as exc:
@@ -420,7 +421,7 @@ class MainWindow(QMainWindow):
         worker.moveToThread(self.thread)
         self.thread.started.connect(worker.run)
         if progress_signal is not None:
-            progress_signal.connect(self.progress.setValue)
+            progress_signal.connect(self._on_progress)
         worker.finished.connect(self._on_generated)
         worker.failed.connect(self._on_failed)
         worker.finished.connect(self.thread.quit)
@@ -429,6 +430,14 @@ class MainWindow(QMainWindow):
         worker.failed.connect(worker.deleteLater)
         self.thread.finished.connect(self._thread_finished)
         self.thread.start()
+
+    def _on_progress(self, value: int):
+        self.progress.setValue(value)
+        if self.active_operation == "generation":
+            self.status.setText(
+                "Generating height field…" if value < 75
+                else "Converting height field to Normal Map…"
+            )
 
     def _on_generated(self, image: np.ndarray):
         self.progress.setValue(100)
