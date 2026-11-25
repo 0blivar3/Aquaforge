@@ -1,17 +1,30 @@
 # AquaForge
 
-A desktop tool for procedural water-surface tangent-space Normal Map generation.
+A desktop tool for procedural water-surface tangent-space Normal Map generation and image-to-normal conversion.
 
-## MVP features
+## Features
+
+### Procedural generation
 - Procedural multi-directional periodic wave and ripple generation.
+- Adjustable resolution, wave scale, strength, frequency, direction, wind, ripple detail and distortion.
+- Built-in presets: Calm Water, Ocean, Lake, River, Storm, Rain, Swamp and Stylized Water.
+- Save and reuse custom presets (stored in the user's `.aquaforge/presets.json` folder).
 - Mathematically normalized tangent-space normals.
 - OpenGL (Y+) and DirectX (Y-) channel conventions.
-- Seamless periodic generation.
-- Adjustable resolution and wave parameters.
+- Seamless mode for tileable procedural textures.
 - Background generation on a Qt worker thread.
+
+### Image to Normal
+- Load common image formats and use luminance or the Red, Green or Blue channel as a height source.
+- Adjust normal strength and Y-channel convention.
+- Preview the source image and the generated Normal Map.
+- Convert images in a background worker thread.
+
+### Export
 - PNG, TGA and TIFF export with overwrite confirmation.
 
 ## Requirements
+
 Python 3.12+ is recommended. Install dependencies:
 
 ```bash
@@ -35,5 +48,9 @@ python main.py
 pytest
 ```
 
-## Current scope
-This is the first functional MVP. 3D preview, image-to-normal conversion, presets, tiling comparison and animated preview are planned for subsequent stages.
+## Roadmap
+
+- Advanced wave models (including Gerstner-style waves and circular ripple emitters).
+- 2D tiling/zoom comparison tools and channel inspection.
+- Animated preview.
+- Real-time 3D preview with PyOpenGL and GLSL.
