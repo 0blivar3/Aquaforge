@@ -29,6 +29,13 @@ A desktop tool for procedural water-surface tangent-space Normal Map generation 
 - Animated texture playback with direction, speed and motion controls.
 - Animation affects only the preview; exported Normal Maps remain static.
 
+### Real-time 3D material preview
+- OpenGL preview with Plane, Cube, Sphere and Cylinder meshes.
+- Tangent-space Normal Map shader with diffuse and specular lighting.
+- Adjustable UV tiling and normal intensity.
+- Drag the viewport to rotate the preview object.
+- The latest generated or converted Normal Map is uploaded to the 3D material preview.
+
 ### Export
 - PNG, TGA and TIFF export with overwrite confirmation.
 
@@ -60,4 +67,3 @@ pytest
 ## Roadmap
 
 - Advanced wave models (including Gerstner-style waves and circular ripple emitters).
-- Real-time 3D preview with PyOpenGL and GLSL.
