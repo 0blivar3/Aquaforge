@@ -76,7 +76,7 @@ def _mesh_plane():
     p = [(-1,0,-1),(1,0,-1),(1,0,1),(-1,0,1)]
     n = [(0,1,0)]*4
     t = [(1,0,0)]*4
-    uv = [(0,0),(1,0),(1,1),(0,1)]
+    uv = [(0,1),(1,1),(1,0),(0,0)]
     return _pack(p,n,uv,t,[0,2,1,0,3,2])
 
 
@@ -209,8 +209,10 @@ class NormalMap3DPreview(QOpenGLWidget):
         image=self.normal_image
         if image is None:
             image=np.zeros((2,2,3),dtype=np.uint8); image[:]=[128,128,255]
+        image=np.ascontiguousarray(np.flipud(image))
         h,w,_=image.shape
         glBindTexture(GL_TEXTURE_2D,self._texture)
+        glPixelStorei(GL_UNPACK_ALIGNMENT,1)
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR)
         glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D,0x2802,GL_REPEAT)
